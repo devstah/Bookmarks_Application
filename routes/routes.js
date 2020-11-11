@@ -1,51 +1,53 @@
 const Sequelize = require("sequelize");
 const { STRING } = Sequelize;
+const functions = require("/Users/devyagarwal/Bookmarks_app/bookmarks_app/functions.js");
 const db = new Sequelize(
   process.env.DATABASE_URL || "postgres://localhost/books_db"
 );
+const app = require("express");
+const router = app.Router(); //going forward, start routes with "router"
 
-const app = require("express").Router();
-module.exports = app;
-// const {
-//   db,
-//   synchAndSeed,
-//   models: { User },
-// } = require("./db");
-
-const functions = require("./functions");
-
-//this is the table that we created
-
-// app.get("/", (req, res) => {
-//   res.redirect("/bookmarks");
-// });
-
-app.delete("/:id", async (req, res, next) => {
-  try {
-    const user = await User.findByPk(req.params.id);
-    // console.log("hello", req.body);
-    await user.destroy();
-    res.redirect("/bookmarks");
-  } catch (ex) {
-    next(ex);
-  }
+const User = db.define("User", {
+  name: {
+    type: STRING,
+    allowNull: false,
+  },
+  url: {
+    type: STRING,
+    allowNull: false,
+  },
+  category: {
+    type: STRING,
+    allowNull: false,
+  },
 });
 
-//this creates new users
-app.post("/post-bookmarks", async (req, res, next) => {
-  try {
-    const user = await User.create(req.body);
-    // console.log("hello", req.body);
-    res.redirect(`/bookmarks/${user.category}`);
-  } catch (ex) {
-    next(ex);
-  }
-});
+const syncAndSeed = async () => {
+  await db.sync({ force: true });
+  await User.create({
+    name: "Stack Overflow ",
+    url: "www.stackoverflow.com",
+    category: "jobsearch",
+  });
+  await User.create({
+    name: "LinkedIn",
+    url: "www.linkedIn.com",
+    category: "jobsearch",
+  });
+  await User.create({
+    name: "Indeed",
+    url: "www.indeed.com",
+    category: "jobsearch",
+  });
+  await User.create({
+    name: "Glassdoor",
+    url: "www.glassdoor.com",
+    category: "jobsearch",
+  });
+};
 
-//bookmarks page
-
-app.get("/", async (req, res, next) => {
-  try {
+//ROUTES START HERE.
+router.get("/", async(req, res, next)=> {
     const users = await User.findAll();
     const count = functions.categCount(users);
     console.log(count);
@@ -81,19 +83,17 @@ app.get("/", async (req, res, next) => {
             </center>
             </body>
           </html>
-        `);
-  } catch (ex) {
-    next(ex);
-  }
+  `);
+
 });
 
-//this handles all the href tags for categories and redirects it here
-app.get("/:category", async (req, res, next) => {
+
+
+router.get("/:category", async (req, res, next) => {
   const curCateg = req.params.category;
   const users = await User.findAll();
   let name_id = functions.name(users, curCateg);
   let namesArr = Object.keys(name_id);
-  console.log(namesArr);
   try {
     res.send(`
             <html>
@@ -133,3 +133,28 @@ app.get("/:category", async (req, res, next) => {
     next(ex);
   }
 });
+
+router.delete("/:id", async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.params.id);
+    // console.log("hello", req.body);
+    await user.destroy();
+    res.redirect("/bookmarks");
+  } catch (ex) {
+    next(ex);
+  }
+});
+
+//this creates new users
+router.post("/post-bookmarks", async (req, res, next) => {
+  try {
+    const user = await User.create(req.body);
+    // console.log("hello", req.body);
+    res.redirect(`/bookmarks/${user.category}`);
+  } catch (ex) {
+    next(ex);
+  }
+});
+
+
+module.exports = router;
