@@ -4,37 +4,16 @@ const path = require("path");
 const app = express();
 const functions = require("./functions");
 const bodyparser = require("body-parser");
-// const port = process.env.PORT || 3000;
-// app.listen(port, () => console.log("listening to port 3000"));
+
 app.use(express.static(path.join(__dirname, "public")));
 const { STRING } = Sequelize;
 const db = new Sequelize(
   process.env.DATABASE_URL || "postgres://localhost/books_db"
 );
-// app.get("/style.css", (req, res) =>
-//   res.sendFile(path.join(__dirname, "styles.css"))
-// );
-
-// const {
-//   db,
-//   syncAndSeed,
-//   models: { User },
-// } = require("./db");
-// const express = require("express");
-// const app = express();
-
-// const createUser = async ({ name, url, category }) => {
-//   return await client
-//     .query('INSERT INTO "name", "url", "category" VALUES($3) RETURNING *', [
-//       name,
-//       url,
-//       category,
-//     ])
-//     .rows(1);
-// };
 
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+app.use(require("method-override")("_method"));
 
 //this is the table that we created
 
@@ -42,7 +21,18 @@ app.get("/", (req, res) => {
   res.redirect("/bookmarks");
 });
 
-//
+app.delete("/bookmarks/:id", async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.params.id);
+    // console.log("hello", req.body);
+    await user.destroy();
+    res.redirect("/bookmarks");
+  } catch (ex) {
+    next(ex);
+  }
+});
+
+//this creates new users
 app.post("/post-bookmarks", async (req, res, next) => {
   try {
     const user = await User.create(req.body);
@@ -55,12 +45,11 @@ app.post("/post-bookmarks", async (req, res, next) => {
 
 //bookmarks page
 
-//
-
 app.get("/bookmarks", async (req, res, next) => {
   try {
     const users = await User.findAll();
-
+    const count = functions.categCount(users);
+    console.log(count);
     let searchCount = functions.categCounter(users);
 
     res.send(`
@@ -71,12 +60,12 @@ app.get("/bookmarks", async (req, res, next) => {
             <body>
             <center>
               <h1>Bookmarks(${users.length})</h1>
-              <div>
+            <div>
               <form method='POST' action='/post-bookmarks'>
-                  <input type="text" name='name' placeHolder="Enter Site name" />
-                  <input type="text" name='url' placeHolder="Enter Site URL" />
-                  <input type="text" name='category' placeHolder="Enter Category" />
-                  <button type='submit'>Create</button>
+                <div><input type="text" name='name' placeHolder="Enter Site name" /></div>
+                <div><input type="text" name='url' placeHolder="Enter Site URL" /></div>
+                <div><input type="text" name='category' placeHolder="Enter Category" /></div>
+                <button type='submit'>Save</button>
               </form>
                 ${users
                   .map(
@@ -89,7 +78,7 @@ app.get("/bookmarks", async (req, res, next) => {
                 `
                   )
                   .join("")}
-              </div>
+            </div>
             </center>
             </body>
           </html>
@@ -103,7 +92,9 @@ app.get("/bookmarks", async (req, res, next) => {
 app.get("/bookmarks/:category", async (req, res, next) => {
   const curCateg = req.params.category;
   const users = await User.findAll();
-  let names = functions.name(users, curCateg);
+  let name_id = functions.name(users, curCateg);
+  let namesArr = Object.keys(name_id);
+  console.log(namesArr);
   try {
     res.send(`
             <html>
@@ -122,13 +113,15 @@ app.get("/bookmarks/:category", async (req, res, next) => {
                 </div>
                 <div>
                 <ul>
-                 ${names
+                 ${namesArr
                    .map(
                      (name) => `
+                 <form method='POST' action='/bookmarks/${name_id[name]}?_method=DELETE'>
                  <li style='list-style-type:none'>
                  <a href='${name}.com'>${name}</a>
+                 <button>x</button>
                  </li>
-                 `
+                 </form>`
                    )
                    .join("")}
                    </ul>
@@ -187,7 +180,7 @@ const init = async () => {
   try {
     await db.authenticate();
     await syncAndSeed();
-    console.log(await User.findAll());
+    // console.log(await User.findAll());
     const port = process.env.PORT || 3000;
     app.listen(port, () => console.log("listening to port 3000"));
   } catch (ex) {
