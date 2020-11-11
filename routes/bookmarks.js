@@ -4,31 +4,23 @@ const db = new Sequelize(
   process.env.DATABASE_URL || "postgres://localhost/books_db"
 );
 
+const app = require("express").Router();
+module.exports = app;
 // const {
 //   db,
 //   synchAndSeed,
 //   models: { User },
 // } = require("./db");
 
-const express = require("express");
-const path = require("path");
-const app = express();
 const functions = require("./functions");
-const bodyparser = require("body-parser");
-
-app.use(express.static(path.join(__dirname, "public")));
-
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-app.use(require("method-override")("_method"));
 
 //this is the table that we created
 
-app.get("/", (req, res) => {
-  res.redirect("/bookmarks");
-});
+// app.get("/", (req, res) => {
+//   res.redirect("/bookmarks");
+// });
 
-app.delete("/bookmarks/:id", async (req, res, next) => {
+app.delete("/:id", async (req, res, next) => {
   try {
     const user = await User.findByPk(req.params.id);
     // console.log("hello", req.body);
@@ -52,7 +44,7 @@ app.post("/post-bookmarks", async (req, res, next) => {
 
 //bookmarks page
 
-app.get("/bookmarks", async (req, res, next) => {
+app.get("/", async (req, res, next) => {
   try {
     const users = await User.findAll();
     const count = functions.categCount(users);
@@ -96,7 +88,7 @@ app.get("/bookmarks", async (req, res, next) => {
 });
 
 //this handles all the href tags for categories and redirects it here
-app.get("/bookmarks/:category", async (req, res, next) => {
+app.get("/:category", async (req, res, next) => {
   const curCateg = req.params.category;
   const users = await User.findAll();
   let name_id = functions.name(users, curCateg);
@@ -141,58 +133,3 @@ app.get("/bookmarks/:category", async (req, res, next) => {
     next(ex);
   }
 });
-
-const User = db.define("User", {
-  name: {
-    type: STRING,
-    allowNull: false,
-  },
-  url: {
-    type: STRING,
-    allowNull: false,
-  },
-  category: {
-    type: STRING,
-    allowNull: false,
-  },
-});
-
-const syncAndSeed = async () => {
-  await db.sync({ force: true });
-  await User.create({
-    name: "Stack Overflow ",
-    url: "www.stackoverflow.com",
-    category: "jobsearch",
-  });
-  await User.create({
-    name: "LinkedIn",
-    url: "www.linkedIn.com",
-    category: "jobsearch",
-  });
-  await User.create({
-    name: "Indeed",
-    url: "www.indeed.com",
-    category: "jobsearch",
-  });
-  await User.create({
-    name: "Glassdoor",
-    url: "www.glassdoor.com",
-    category: "jobsearch",
-  });
-};
-
-//handles the users post, creates and adds the user
-
-const init = async () => {
-  try {
-    await db.authenticate();
-    await syncAndSeed();
-    console.log(await User.findAll());
-    const port = process.env.PORT || 3000;
-    app.listen(port, () => console.log("listening to port 3000"));
-  } catch (ex) {
-    // console.log(ex);
-  }
-};
-
-init();
