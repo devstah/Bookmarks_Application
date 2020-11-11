@@ -3,6 +3,7 @@ const express = require("express");
 const path = require("path");
 const app = express();
 const functions = require("./functions");
+const bodyparser = require("body-parser");
 // const port = process.env.PORT || 3000;
 // app.listen(port, () => console.log("listening to port 3000"));
 app.use(express.static(path.join(__dirname, "public")));
@@ -33,23 +34,24 @@ const db = new Sequelize(
 // };
 
 app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
 
 //this is the table that we created
 
-//
-// app.get("/", (req, res) => {
-//   res.redirect("/users");
-// });
+app.get("/", (req, res) => {
+  res.redirect("/bookmarks");
+});
 
-// //
-// app.post("/users", async (req, res, next) => {
-//   try {
-//     const user = await User.create(req.body);
-//     res.redirect(`/users/${users.id}`);
-//   } catch (ex) {
-//     next(ex);
-//   }
-// });
+//
+app.post("/post-bookmarks", async (req, res, next) => {
+  try {
+    const user = await User.create(req.body);
+    // console.log("hello", req.body);
+    res.redirect(`/bookmarks/${user.category}`);
+  } catch (ex) {
+    next(ex);
+  }
+});
 
 //bookmarks page
 
@@ -70,11 +72,11 @@ app.get("/bookmarks", async (req, res, next) => {
             <center>
               <h1>Bookmarks(${users.length})</h1>
               <div>
-              <form method='POST'>
-                  <div><input type="text" placeHolder="Enter Site name" /></div>
-                  <div><input type="text" placeHolder="Enter Site URL" /></div>
-                  <div><input type="text" placeHolder="Enter Category" /></div>
-                  <button>Create</button>
+              <form method='POST' action='/post-bookmarks'>
+                  <input type="text" name='name' placeHolder="Enter Site name" />
+                  <input type="text" name='url' placeHolder="Enter Site URL" />
+                  <input type="text" name='category' placeHolder="Enter Category" />
+                  <button type='submit'>Create</button>
               </form>
                 ${users
                   .map(
@@ -99,9 +101,10 @@ app.get("/bookmarks", async (req, res, next) => {
 
 //this handles all the href tags for categories and redirects it here
 app.get("/bookmarks/:category", async (req, res, next) => {
-  //   const curCateg = req.params.category;
+  const curCateg = req.params.category;
+  const users = await User.findAll();
+  let names = functions.name(users, curCateg);
   try {
-    const users = await User.findAll();
     res.send(`
             <html>
               <head>
@@ -118,8 +121,17 @@ app.get("/bookmarks/:category", async (req, res, next) => {
                   </button>
                 </div>
                 <div>
-                  <p>${users.category}</p>
-                  <p>${users.url}</p>
+                <ul>
+                 ${names
+                   .map(
+                     (name) => `
+                 <li style='list-style-type:none'>
+                 <a href='${name}.com'>${name}</a>
+                 </li>
+                 `
+                   )
+                   .join("")}
+                   </ul>
                 </div>
               </center>
               </body>
